@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON GOOSE - Cyber Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blu-neon: #00d2ff;
+            --rosso-neon: #ff0055;
+            --viola-neon: #bc13fe;
+            --sfondo-dark: #0a0b10;
+            --testo-chiaro: #e0e0e0;
+            --shadow-blu: 0 0 15px var(--blu-neon);
+            --shadow-rosso: 0 0 15px var(--rosso-neon);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--sfondo-dark);
+            color: var(--testo-chiaro);
+            height: 100vh; width: 100vw;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+            z-index: -1;
+        }
+
+        /* --- SCHERMATE --- */
+        .screen {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            text-align: center; opacity: 0;
+            transition: all 0.4s ease;
+            padding: 20px; box-sizing: border-box;
+        }
+
+        .screen.active { display: flex; opacity: 1; }
+
+        h1 { font-family: 'Orbitron', sans-serif; font-size: clamp(2rem, 8vw, 4rem); margin-bottom: 1rem; letter-spacing: 5px; }
+
+        /* --- BOTTONI --- */
+        .btn {
+            padding: 12px 30px; font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem; font-weight: bold; text-transform: uppercase;
+            background: transparent; color: var(--blu-neon);
+            border: 2px solid var(--blu-neon); cursor: pointer;
+            transition: 0.3s; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+            margin: 10px; min-width: 160px;
+        }
+        .btn:hover { background: var(--blu-neon); color: #000; box-shadow: var(--shadow-blu); }
+        .btn-red { color: var(--rosso-neon); border-color: var(--rosso-neon); }
+        .btn-red:hover { background: var(--rosso-neon); box-shadow: var(--shadow-rosso); }
+
+        /* --- TABELLONE --- */
+        .game-container {
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+            max-width: 95vw; max-height: 95vh;
+        }
+
+        #board-wrapper {
+            position: relative;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(9, 1fr); /* Griglia 9x7 per 63 caselle circa */
+            gap: 5px;
+        }
+
+        .tile {
+            width: clamp(35px, 8vw, 60px);
+            height: clamp(35px, 8vw, 60px);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            font-size: 0.7rem; position: relative;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+        }
+
+        .tile.special { color: var(--viola-neon); font-weight: bold; border-color: var(--viola-neon); }
+
+        /* --- PEDINE --- */
+        .pawn {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            border: 2px solid white;
+        }
+        #pawn-blu { background: var(--blu-neon); box-shadow: var(--shadow-blu); }
+        #pawn-rosso { background: var(--rosso-neon); box-shadow: var(--shadow-rosso); }
+
+        /* --- DADI --- */
+        #dice-result {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem; color: var(--viola-neon);
+            text-shadow: 0 0 10px var(--viola-neon);
+            margin: 10px 0; min-height: 2.5rem;
+        }
+
+        #status-msg { margin-bottom: 10px; font-weight: bold; font-size: 1.2rem; }
+
+        @media (max-width: 600px) {
+            #board-wrapper { grid-template-columns: repeat(7, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen" class="screen active">
+        <h1>NEON GOOSE</h1>
+        <button class="btn" onclick="showScreen('mode-screen')">START SEQUENCE</button>
+    </div>
+
+    <div id="mode-screen" class="screen">
+        <h2>IDENTIFICA PROTOCOLLO</h2>
+        <button class="btn" onclick="startGame(false)">Due Giocatori</button>
+        <button class="btn btn-red" onclick="startGame(true)">Contro il Bot</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="status-msg">Turno di: <span id="current-player-name">BLU</span></div>
+        <div id="dice-result">-</div>
+        
+        <div class="game-container">
+            <div id="board-wrapper">
+                <div id="pawn-blu" class="pawn"></div>
+                <div id="pawn-rosso" class="pawn"></div>
+                </div>
+            
+            <div class="controls">
+                <button id="roll-btn" class="btn" onclick="rollDice()">LANCIA DADI</button>
+                <button class="btn btn-red" onclick="showScreen('menu-screen')">EXIT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="win-screen" class="screen">
+        <h1 id="win-text">IL BLU HA VINTO</h1>
+        <button class="btn" onclick="resetGame()">REBOOT</button>
+    </div>
+
+    <script>
+        const TOTAL_TILES = 63;
+        let playerPos = [0, 0]; // 0 = Blu, 1 = Rosso
+        let playerWait = [0, 0]; // Turni di fermo
+        let currentPlayer = 0;
+        let isBotMode = false;
+        let gameActive = true;
+
+        const specialTiles = {
+            6: { name: "PONTE", move: 6, msg: "Ponte! Salta avanti!" },
+            9: { name: "OCA", oca: true }, 18: { name: "OCA", oca: true }, 27: { name: "OCA", oca: true },
+            36: { name: "OCA", oca: true }, 45: { name: "OCA", oca: true }, 54: { name: "OCA", oca: true },
+            19: { name: "LOCANDA", wait: 1, msg: "Locanda: fermo 1 turno." },
+            31: { name: "POZZO", wait: 2, msg: "Pozzo: fermo 2 turni." },
+            42: { name: "LABIRINTO", move: -12, msg: "Labirinto! Torna alla 30." },
+            52: { name: "PRIGIONE", wait: 3, msg: "Prigione: fermo 3 turni." },
+            58: { name: "SCHELETRO", move: -58, msg: "Morte! Ricomincia da capo!" }
+        };
+
+        function createBoard() {
+            const wrapper = document.getElementById('board-wrapper');
+            // Rimuovi vecchie caselle ma tieni le pedine
+            const pawns = [document.getElementById('pawn-blu'), document.getElementById('pawn-rosso')];
+            wrapper.innerHTML = "";
+            wrapper.appendChild(pawns[0]);
+            wrapper.appendChild(pawns[1]);
+
+            for (let i = 0; i <= TOTAL_TILES; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.id = `tile-${i}`;
+                tile.innerHTML = `<span>${i === 0 ? 'START' : i === 63 ? 'META' : i}</span>`;
+                
+                if (specialTiles[i]) {
+                    tile.classList.add('special');
+                    tile.innerHTML += `<small>${specialTiles[i].name}</small>`;
+                }
+                wrapper.appendChild(tile);
+            }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            setTimeout(() => {
+                document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+                const target = document.getElementById(screenId);
+                target.style.display = 'flex';
+                setTimeout(() => target.classList.add('active'), 50);
+            }, 400);
+        }
+
+        function startGame(vsBot) {
+            isBotMode = vsBot;
+            playerPos = [0, 0];
+            playerWait = [0, 0];
+            currentPlayer = 0;
+            gameActive = true;
+            createBoard();
+            updatePawnPositions();
+            updateUI();
+            showScreen('game-screen');
+        }
+
+        function updateUI() {
+            const name = currentPlayer === 0 ? "BLU" : "ROSSO";
+            const color = currentPlayer === 0 ? "var(--blu-neon)" : "var(--rosso-neon)";
+            const display = document.getElementById('current-player-name');
+            display.innerText = name;
+            display.style.color = color;
+            document.getElementById('roll-btn').style.borderColor = color;
+        }
+
+        function rollDice() {
+            if (!gameActive) return;
+
+            // Controllo se il giocatore è bloccato
+            if (playerWait[currentPlayer] > 0) {
+                alert(`Il giocatore ${currentPlayer === 0 ? 'BLU' : 'ROSSO'} è bloccato per ancora ${playerWait[currentPlayer]} turni.`);
+                playerWait[currentPlayer]--;
+                nextTurn();
+                return;
+            }
+
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            const total = d1 + d2;
+            document.getElementById('dice-result').innerText = `${d1} + ${d2} = ${total}`;
+
+            movePlayer(currentPlayer, total);
+        }
+
+        async function movePlayer(pIdx, steps) {
+            gameActive = false; // Blocca click durante animazione
+            let target = playerPos[pIdx] + steps;
+
+            // Regola del rimbalzo
+            if (target > TOTAL_TILES) {
+                target = TOTAL_TILES - (target - TOTAL_TILES);
+            }
+
+            playerPos[pIdx] = target;
+            updatePawnPositions();
+
+            await new Promise(r => setTimeout(r, 600));
+
+            // Gestione caselle speciali
+            const tileSpec = specialTiles[playerPos[pIdx]];
+            if (tileSpec) {
+                if (tileSpec.oca) {
+                    alert("OCA! Salti di nuovo!");
+                    movePlayer(pIdx, steps);
+                    return;
+                }
+                if (tileSpec.move) playerPos[pIdx] += tileSpec.move;
+                if (tileSpec.wait) playerWait[pIdx] = tileSpec.wait;
+                if (tileSpec.msg) alert(tileSpec.msg);
+                updatePawnPositions();
+            }
+
+            if (playerPos[pIdx] === TOTAL_TILES) {
+                endGame();
+            } else {
+                gameActive = true;
+                nextTurn();
+            }
+        }
+
+        function nextTurn() {
+            currentPlayer = currentPlayer === 0 ? 1 : 0;
+            updateUI();
+            if (isBotMode && currentPlayer === 1 && gameActive) {
+                setTimeout(rollDice, 1200);
+            }
+        }
+
+        function updatePawnPositions() {
+            const pawns = [document.getElementById('pawn-blu'), document.getElementById('pawn-rosso')];
+            pawns.forEach((p, i) => {
+                const tile = document.getElementById(`tile-${playerPos[i]}`);
+                const rect = tile.getBoundingClientRect();
+                const boardRect = document.getElementById('board-wrapper').getBoundingClientRect();
+                
+                // Offset per non sovrapporre le pedine
+                const offset = i === 0 ? -10 : 10;
+                p.style.top = (tile.offsetTop + 15) + "px";
+                p.style.left = (tile.offsetLeft + 20 + offset) + "px";
+            });
+        }
+
+        function endGame() {
+            const winner = currentPlayer === 0 ? "IL BLU" : "IL ROSSO";
+            const winTxt = document.getElementById('win-text');
+            winTxt.innerText = `${winner} HA VINTO`;
+            winTxt.style.color = currentPlayer === 0 ? "var(--blu-neon)" : "var(--rosso-neon)";
+            showScreen('win-screen');
+        }
+
+        function resetGame() {
+            startGame(isBotMode);
+        }
+    </script>
+</body>
+</html>
